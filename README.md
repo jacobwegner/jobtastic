@@ -147,7 +147,54 @@ def lets_divide(request):
 
 The `my_app/lets_divide.html` template will then use the `task_id`
 to query the task result all asynchronous-like
-and keep the user up to date with what is happening.
+and keep the user up to date with what is happening:
+
+``` html
+{% load staticfiles %}
+<!DOCTYPE html>
+<html>
+    <head>
+    </head>
+    <body>
+        <div class="jobtastic-panel" style="margin: 10%;">
+            <div class="jobtastic-result">
+                <em>Just loaded the page, but waiting on the task.</em>
+            </div>
+        </div>
+        <div style="display: none;" id="jobtastic-task" data-task-id="{{ task_id }}"></div>
+
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/2.2.2/jquery.min.js"></script>
+        <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/jquery-ui.min.js"></script>
+        <script src="{% static "js/jquery-celery/celery.js" %}"></script>
+        <script>
+            $(document).ready(function() {
+                var taskId = $("#jobtastic-task").data("task-id");
+
+                // define a error call back if the task returns a failure state
+                function error() {
+                    $(".jobtastic-result").empty().append("<strong>Something went horribly wrong.</strong>");
+                };
+
+                $.fn.djcelery({
+                    task_id: taskId,
+                    check_interval: 2000,
+                    on_success: function (task) {
+                        $(".jobtastic-result").empty().append("<strong>The task has completed!</strong>");
+                    },
+                    on_failure: error,
+                    on_error: error,
+                    on_other: function(task) {
+                        if (task.status == "PROGRESS") {
+                            var complete_percentage = Math.round(task.result.progress_percent * 100) / 100;
+                            $(".jobtastic-result").empty().append("Calculation in progress: " + complete_percentage + "%");
+                        };
+                    };
+                });
+            });
+        </script>
+    </body>
+</html>
+```
 
 For [Flask](http://flask.pocoo.org/), you might do something like:
 
